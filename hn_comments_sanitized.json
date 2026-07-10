@@ -1,0 +1,157 @@
+[
+  {
+    "id": 45746020,
+    "by": "todsacerdoti",
+    "time": 1761741312,
+    "type": "story",
+    "text": "<a href=\"https:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=mdOxIc0HM04\" rel=\"nofollow\">https:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=mdOxIc0HM04</a>",
+    "title": "Zig's New Async I/O",
+    "url": "https://andrewkelley.me/post/zig-new-async-io-text-version.html",
+    "score": 329,
+    "descendants": 172
+  },
+  {
+    "id": 45764400,
+    "by": "thefaux",
+    "time": 1761853292,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "I find the direction of zig confusing. Is it supposed to be a simple language or a complex one? Low level or high level? This feature is to me a strange mix of high and low level functionality and quite complex.<p>The io interface looks like OO but violates the Liskov substitution principle. For me, this does not solve the function color problem, but instead hides it. Every function with an IO interface cannot be reasoned about locally because of unexpected interactions with the io parameter input. This is particularly nasty when IO objects are shared across library boundaries. I now need to understand how the library internally manages io if I share that object with my internal code. Code that worked in one context may surprisingly not work in another context. As a library author, how do I handle an io object that doesn&#x27;t behave as I expect?<p>Trying to solve this problem at the language level fundamentally feels like a mistake to me because you can&#x27;t anticipate in advance all of the potential use cases for something as broad as io. That&#x27;s not to say that this direction shouldn&#x27;t be explored, but if it were my project, I would separate this into another package that I would not call standard."
+  },
+  {
+    "id": 45764252,
+    "by": "PaulHoule",
+    "time": 1761852591,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "It seems to me that async io struggles whenever people try it.<p>For instance it is where Rust goes to die because it subverts the stack-based paradigm behind ownership.  I used to find it was fun to write little applications like web servers in aio Python,  particularly if message queues and websockets were involved,  but for ordinary work you&#x27;re better off using gunicorn.  The trouble is that conventional async i&#x2F;o solutions are all single threaded and in an age where it&#x27;s common to have a 16 core machine on your desktop it makes no sense.  It would be like starting a chess game dumping out all your pieces except for your King.<p>Unfashionable languages like Java and .NET that have quality multithreaded runtimes are the way to go because they provide a single paradigm to manage both concurrency and parallelism."
+  },
+  {
+    "id": 45766329,
+    "by": "andyferris",
+    "time": 1761864689,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "Personally I find this really cool.<p>One thing I like about the design is it locks in some of the &quot;platforms&quot; concepts seen in other languages (e.g. Roc), but in a way that goes with Zig&#x27;s &quot;no hidden control flow&quot; mantra.<p>The downstream effect is that it will be normal to create your own non-posix analogue of `io` for wherever you want code to hook into. Writing a game engine? Let users interact with a set of effectful functions you inject into their scripts.<p>As a &quot;platform&quot; writer (like the game engine), essentially you get to create a sandbox. The missing piece may be controlling access to calling arbitrary extern C functions - possibly that capability would need to be provided by `io` to create a fool-proof guarantees about what some code you call does. (The debug printing is another uncontrolled effect)."
+  },
+  {
+    "id": 45765244,
+    "by": "pyrolistical",
+    "time": 1761857808,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "Oh boy. Example 7 is a bit of a mindfuck. You get the returned string in both in await and cancel.<p>Feels like this violates zig \u201cno hidden control flow\u201d principle. I kinda see how it doesn\u2019t. But it sure feels like a violation.  But I also don\u2019t see how they can retain the spirit of the principle with async code."
+  },
+  {
+    "id": 45768930,
+    "by": "travisgriggs",
+    "time": 1761891417,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "I deal with async function coloring in swift and Kotlin. Have avoided it (somehow) in our Python codebase. And in Elixir, I do things on separate processes all the time, but never feel like I\u2019m wrestling with function coloring. I do like Zig (what little I\u2019ve played with), but continue to wish that for concurrent style computation, people would just use BEAM based languages."
+  },
+  {
+    "id": 45764840,
+    "by": "comex",
+    "time": 1761855538,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "It&#x27;s worth noting that this is <i>not</i> async&#x2F;await in the sense of essentially every other language that uses those terms.<p>In other languages, when the compiler sees an async function, it compiles it into a state machine or &#x27;coroutine&#x27;, where the function can suspend itself at designated points marked with `await`, and be resumed later.<p>In Zig, the compiler used to support coroutines but this was removed.  In the new design, `async` and `await` are just functions.  In the threaded implementation used in the demo, `await` just blocks the thread until the operation is done.<p>To be fair, the bottom of the post explains that there are two other Io implementations being planned.<p>One of them is &quot;stackless coroutines&quot;, which would be similar to traditional async&#x2F;await.  However, from the discussion so far this seems a bit like vaporware.  As discussed in [1], andrewrk explicitly rejected the idea of just (re-)adding normal async&#x2F;await keywords, and instead wants a different design, as tracked in issue 23446.  But in issue 23446 the seems to be zero agreement on how the feature would work, how it would improve on traditional async&#x2F;await, or how it would avoid function coloring.<p>The other implementation being planned is &quot;stackful coroutines&quot;.  From what I can tell, this has more of a plan and is more promising, but there are significant unknowns.<p>The basis of the design is similar to green threads or fibers.  Low-level code generation would be identical to normal synchronous code, with no state machine transform.  Instead, a library would implement suspension by swapping out the native register state and stack, just like the OS kernel does when switching between OS threads.  By itself, this has been implemented many times before, in libraries for C and in the runtimes of languages like Go.  But it has the key limitation that you don&#x27;t know how much stack to allocate.  If you allocate too much stack in advance, you end up being not much cheaper than OS threads; but if you allocate too little stack, you can easily hit stack overflow.  Go addresses this by allocating chunks of stack on demand, but that still imposes a cost and a dependency on dynamic allocation.<p>andrewrk proposes [2] to instead have the compiler calculate the maximum amount of native stack needed by a function and all its callees.  In this case, the stack could be sized exactly to fit.  In some sense this is similar to async in Rust, where the compiler calculates the size of async function objects based on the amount of state the function and its callees need to store during suspension.  But the Zig approach would apply to all function calls rather than treating async as a separate case.  As a result, the benefits would extend beyond memory usage in async code.  The compiler would statically guarantee the absence of stack overflow, which benefits reliability in all code that uses the feature.  This would be particularly useful in embedded where, typically, reliability demands are high and memory available is low.  Right now in embedded, people sometimes use a GCC feature (&quot;-fstack-usage&quot;) that does a similar calculation, but it&#x27;s messy enough that people often don&#x27;t bother.  So it would be cool to have this as a first-class feature in Zig.<p>But.<p>There&#x27;s a reason that stack usage calculators are uncommon.  If you want to statically bound stack usage:<p>First, you have to ban recursion, or else add some kind of language mechanism for tracking how many times a function can possibly recurse.  Banning recursion is common in embedded code but would be rather annoying for most codebases.  Tracking recursion is definitely possible, as shown by proof languages like Agda or Coq that make you prove termination of recursive functions - but those languages have a lot of tools that &#x27;normal&#x27; languages don&#x27;t, so it&#x27;s unclear how ergonomic such a feature could be in Zig.  The issue [2] doesn&#x27;t have much concrete discussion on how it would work.<p>Second, you have to ban dynamic calls (i.e. calls to function pointers), because if you don&#x27;t know what function you&#x27;re calling, you don&#x27;t know how much stack it will use.  This has been the subject of more concrete design in [3] which proposes a &quot;restricted&quot; function pointer type that can only refer to a statically known set of functions.  However, it remains to be seen how ergonomic and composable this will be.<p>Zooming back out:<p>Personally, I&#x27;m glad that Zig is willing to experiment with these things rather than just copying the same async&#x2F;await feature as every other language.  There is real untapped potential out there.  On the other hand, it seems a little early to claim victory, when all that works today is a thread-based I&#x2F;O library that happens to have &quot;async&quot; and &quot;await&quot; in its function names.<p>Heck, it seems early to finalize an I&#x2F;O library design if you don&#x27;t even know how the fancy high-performance implementations will work.  Though to be fair, many applications will get away just fine with threaded I&#x2F;O, and it&#x27;s nice to see a modern I&#x2F;O library design that embraces that as a serious option.<p>[1] <a href=\"https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;issues&#x2F;6025#issuecomment-3072857526\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;issues&#x2F;6025#issuecomment-3072...</a><p>[2] <a href=\"https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;issues&#x2F;157\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;issues&#x2F;157</a><p>[3] <a href=\"https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;issues&#x2F;23367\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;issues&#x2F;23367</a>"
+  },
+  {
+    "id": 45766652,
+    "by": "ozgrakkurt",
+    "time": 1761866868,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "Really really hope they make it easy and ergonomic to integrate with single threaded cooperative scheduling paradigm like seastar or glommio.<p>I wrote a library that I use for this but it would be really nice to be able to cleanly integrate it into async&#x2F;await.<p><a href=\"https:&#x2F;&#x2F;github.com&#x2F;steelcake&#x2F;csio\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;steelcake&#x2F;csio</a>"
+  },
+  {
+    "id": 45769825,
+    "by": "miki123211",
+    "time": 1761901199,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "How does downstream code know which kind of asynchrony is requested &#x2F; allowed?<p>Assume some code is trying to blink an LED, which can only be done with the led_on and led_off system calls. Those system calls block until they get an ack from the LED controller, which, in the worst case, will timeout after 10s if the controller is broken.<p>In e.g. Python, my function is either sync or async, if it&#x27;s async, I know I have to go through the rigamarole of accessing the event loop and scheduling the blocking syscall on a background thread. If it&#x27;s sync, I know I&#x27;m allowed to block, but I can&#x27;t assume an event loop exists.<p>In Zig, how would something like this be accomplished (assuming led_on and led_off aren&#x27;t operations natively supported by the IO interface?)"
+  },
+  {
+    "id": 45771548,
+    "by": "geon",
+    "time": 1761915898,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "So a cancelable function must poll the `cancelRequested` function, and return the error `Canceled`, right?<p><a href=\"https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;blob&#x2F;master&#x2F;lib&#x2F;std&#x2F;Io.zig#L1611\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;blob&#x2F;master&#x2F;lib&#x2F;std&#x2F;Io.zig#L1...</a><p><a href=\"https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;blob&#x2F;master&#x2F;lib&#x2F;std&#x2F;Io.zig#L713\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;ziglang&#x2F;zig&#x2F;blob&#x2F;master&#x2F;lib&#x2F;std&#x2F;Io.zig#L7...</a>"
+  },
+  {
+    "id": 45773891,
+    "by": "HacklesRaised",
+    "time": 1761928216,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "To the extent that it will affect ONLY my opinion of the language I reserve judgement, but prima facie, I&#x27;m a little worried that this will prove to be a distraction.<p>If the language didn&#x27;t have a std implementation of async&#x2F;await, would it affect your decision to use Xig?  Or are you comfortable with traditional multithreaded facilities to the extent that you require concurrency (and parallelism)?"
+  },
+  {
+    "id": 45768629,
+    "by": "nialv7",
+    "time": 1761887390,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "This just sounds like a threadpool implementation to me. Sure you can brand it async, but it&#x27;s not what we generally mean when we say async."
+  },
+  {
+    "id": 45750786,
+    "by": "sanity",
+    "time": 1761761411,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "Andrew Kelley is one of my all-time favorite technical speakers, and zig is packed full of great ideas. He also seems to be a great model of an open source project leader."
+  },
+  {
+    "id": 45751234,
+    "by": "ancarda",
+    "time": 1761763419,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "I really hope this is going to be entirely optional, but I know realistically it just won&#x27;t be. If Rust is any example, a language that has optional async support, async will permeate into the whole ecosystem. That&#x27;s to be expected with colored functions. The stdlib isn&#x27;t too bad but last time I checked a lot of crates.io is filled with async functions for stuff that doesn&#x27;t actually block.<p>Async clearly works for many people, I do fully understand people who can&#x27;t get their heads around threads and prefer async. It&#x27;s wonderful that there&#x27;s a pattern people can use to be productive!<p>For whatever reason, async just doesn&#x27;t work for me. I don&#x27;t feel comfortable using it and at this point I&#x27;ve been trying on and off for probably 10+ years now. Maybe it&#x27;s never going to happen. I&#x27;m much more comfortable with threads, mutex locks, channels, Erlang style concurrency, nurseries -- literally ANYTHING but async. All of those are very understandable to me and I&#x27;ve built production systems with all of those.<p>I hope when Zig reaches 1.0 I&#x27;ll be able to use it. I started learning it earlier this month and it&#x27;s been really enjoyable to use."
+  },
+  {
+    "id": 45751414,
+    "by": "gethly",
+    "time": 1761764290,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "I almost fell out of my chair at 22:06 from laughter :D"
+  },
+  {
+    "id": 45752357,
+    "by": "AndyKelley",
+    "time": 1761768446,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "text version: <a href=\"https:&#x2F;&#x2F;andrewkelley.me&#x2F;post&#x2F;zig-new-async-io-text-version.html\" rel=\"nofollow\">https:&#x2F;&#x2F;andrewkelley.me&#x2F;post&#x2F;zig-new-async-io-text-version.h...</a>"
+  },
+  {
+    "id": 45755281,
+    "by": "pragmatic",
+    "time": 1761786853,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "<a href=\"https:&#x2F;&#x2F;andrewkelley.me&#x2F;post&#x2F;zig-new-async-io-text-version.html\" rel=\"nofollow\">https:&#x2F;&#x2F;andrewkelley.me&#x2F;post&#x2F;zig-new-async-io-text-version.h...</a><p>Text version.<p>The desynced video makes the video a bit painful to watch."
+  },
+  {
+    "id": 45764393,
+    "by": "MRson",
+    "time": 1761853267,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "I don&#x27;t understand, why is allocation not part of IO? This seems like effect oriented programming with a kinda strange grouping: allocation, and the rest (io)."
+  },
+  {
+    "id": 45764498,
+    "by": "nrds",
+    "time": 1761853829,
+    "type": "comment",
+    "parent": 45746020,
+    "text": "TL;DR. Zig now has an effect system with multiple handlers for alloc and io effects. But the designer doesn&#x27;t know anything about effect systems and it&#x27;s not algebraic, probably. Will be interesting to see how this develops."
+  }
+]
