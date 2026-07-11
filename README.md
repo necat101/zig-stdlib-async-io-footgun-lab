@@ -4,6 +4,8 @@ A tiny local correctness and compiler-validation lab about Zig stdlib async IO f
 
 **No network. No sockets. No TLS. No package manager. Local Zig compiler only.**
 
+> **Status (2026-07-11, v2):** Generated Zig case files contain real API probes using `@hasDecl(std, "Io")`, `@hasDecl(std.Io, "async")`, `@hasDecl(std.Io, "concurrent")`, `@hasDecl(std.Io, "Queue")`, etc., with version-sensitive `@compileError` fallbacks. This addresses an audit finding that v1 case files were marker-only stubs. Compile/run validation has NOT been performed in the committed results — no local Zig compiler was available during the lab run, so all 688 result rows are honestly marked `compile_skip` / `run_skip` with `zig_not_found`. When a local portable Zig compiler IS available, `run_lab.py` will invoke it and record real compile/run/api_changed results.
+
 ## Hacker News thread access
 
 The Hacker News thread at https://news.ycombinator.com/item?id=45746020 ("Zig's New Async I/O", 172 comments) was read via the bundled Hacker News CLI (`hackernews get-item --id 45746020` + child comment fetches, hitting the real Hacker News Firebase API) **before writing the sentiment summary below**.
