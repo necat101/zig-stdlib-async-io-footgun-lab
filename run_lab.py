@@ -59,7 +59,6 @@ results = []
 t0 = time.perf_counter()
 subprocess_count = 0
 
-subprocess_count = 0
 def run_cmd(cmd, timeout=5):
     global subprocess_count
     subprocess_count += 1
